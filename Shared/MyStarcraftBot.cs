@@ -12,6 +12,9 @@ public class MyStarcraftBot : DefaultBWListener
     public bool IsRunning { get; private set; } = false;
     public bool InGame { get; private set; } = false;
     public int? GameSpeedToSet { get; set; } = null;
+    Dictionary<Unit, int>? InitialMinerals;
+
+
 
     public event Action? StatusChanged;
 
@@ -41,6 +44,7 @@ public class MyStarcraftBot : DefaultBWListener
         InGame = true;
         StatusChanged?.Invoke();
         Game?.EnableFlag(Flag.UserInput); // let human control too
+        InitialMinerals = Game?.GetMinerals().Where(m => m.IsVisible()).ToDictionary(m => m, m => 0);
     }
 
     public override void OnEnd(bool isWinner)
@@ -59,6 +63,28 @@ public class MyStarcraftBot : DefaultBWListener
             GameSpeedToSet = null;
         }
         Game.DrawTextScreen(100, 100, "Hello Bot!");
+        NewMethod();
+    }
+
+    private void NewMethod()
+    {
+        if (Game == null)
+            return;
+        var idleWorkers = Game.Self().GetUnits().Where(u => u.GetUnitType() == UnitType.Terran_SCV).Where(u => u.IsIdle());
+        foreach (var worker in idleWorkers)
+        {
+            var mineral = InitialMinerals?.OrderBy(m => m.Key.GetDistance(worker)).Where(m => m.Value == 0).Select(m => m.Key).FirstOrDefault<Unit?>();
+
+            if (mineral != null)
+            {
+                worker.Gather(mineral);
+                InitialMinerals![mineral]++;
+            }
+            else
+            {
+                mineral = InitialMinerals?.OrderBy(m => m.Key.GetDistance(worker)).Where(m => m.Value == 1).Select(m => m.Key).FirstOrDefault<Unit?>();
+            }
+        }
     }
 
     public override void OnUnitComplete(Unit unit) { }

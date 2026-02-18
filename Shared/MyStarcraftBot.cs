@@ -18,7 +18,7 @@ public class MyStarcraftBot : DefaultBWListener
     public void Connect()
     {
         _bwClient = new BWClient(this);
-        var _ = Task.Run(() => _bwClient.StartGame());
+        _bwClient.StartGame();
         IsRunning = true;
         StatusChanged?.Invoke();
     }

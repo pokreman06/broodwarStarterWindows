@@ -28,11 +28,30 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 var starcraftService = app.Services.GetRequiredService<StarCraftService>();
 var bot = app.Services.GetRequiredService<MyStarcraftBot>();
 
+var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (sender, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
 var _ = Task.Run(() =>
 {
     app.Run();
 });
 
-bot.Connect();
-
-starcraftService.StopAndReset();
+while (true)
+{
+    try
+    {
+        Console.WriteLine("starting bot");
+        bot.Connect();
+        Console.WriteLine("bot done");
+        
+    }
+    catch (Exception ex)
+    {
+        
+        Console.WriteLine($"bot crashed: {ex.Message}");
+    }
+}

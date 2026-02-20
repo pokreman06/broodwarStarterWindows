@@ -12,27 +12,28 @@ public class MyStarcraftBot : DefaultBWListener
     public bool IsRunning { get; private set; } = false;
     public bool InGame { get; private set; } = false;
     public int? GameSpeedToSet { get; set; } = null;
+    private bool _shouldDisconnect = false;
+    private TaskCompletionSource<bool>? _disconnectTcs = null;
 
     public event Action? StatusChanged;
 
     public void Connect()
     {
         _bwClient = new BWClient(this);
-        _bwClient.StartGame();
         IsRunning = true;
         StatusChanged?.Invoke();
+        _bwClient.StartGame();
+        Console.WriteLine("done with game");
     }
 
-    public void Disconnect()
+    public async Task Disconnect()
     {
-        if (_bwClient != null)
-        {
-            (_bwClient as IDisposable)?.Dispose();
-        }
-        _bwClient = null;
-        IsRunning = false;
-        InGame = false;
-        StatusChanged?.Invoke();
+        if (!IsRunning && !InGame)
+            return;
+
+        _disconnectTcs = new TaskCompletionSource<bool>();
+        _shouldDisconnect = true;
+        await _disconnectTcs.Task;
     }
 
     // Bot Callbacks below
@@ -46,13 +47,26 @@ public class MyStarcraftBot : DefaultBWListener
     public override void OnEnd(bool isWinner)
     {
         InGame = false;
+        IsRunning = false;
+        _bwClient = null;
+        _shouldDisconnect = false;
         StatusChanged?.Invoke();
+        _disconnectTcs?.TrySetResult(true);
+        _disconnectTcs = null;
     }
 
     public override void OnFrame()
     {
         if (Game == null)
             return;
+
+        if (_shouldDisconnect)
+        {
+            Console.WriteLine("Leaving Game");
+            Game.LeaveGame();
+            return;
+        }
+
         if (GameSpeedToSet != null)
         {
             Game.SetLocalSpeed(GameSpeedToSet.Value);

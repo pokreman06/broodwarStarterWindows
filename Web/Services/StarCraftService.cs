@@ -113,8 +113,8 @@ public class StarCraftService
 
     public void StopAndReset()
     {
-        Console.WriteLine("Disposing StarCraftService...");
-        CloseStarCraftWindow();
-        StopChaosLauncher();
+        // Console.WriteLine("Disposing StarCraftService...");
+        // CloseStarCraftWindow();
+        // StopChaosLauncher();
     }
 }

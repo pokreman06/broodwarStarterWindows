@@ -35,4 +35,5 @@ var _ = Task.Run(() =>
 
 bot.Connect();
 
+
 starcraftService.StopAndReset();

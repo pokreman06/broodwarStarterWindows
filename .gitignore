@@ -8,3 +8,5 @@ userGamePreference.json
 
 dotnet-sdk-*.exe
 launch.bat
+
+node_modules/

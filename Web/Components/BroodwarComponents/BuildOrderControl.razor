@@ -1,0 +1,322 @@
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.JSInterop
+@using Web
+@using Web.Components
+@using Web.Components.BroodwarComponents
+@using Shared
+@using BWAPI.NET
+@implements IDisposable
+@inject ProtossBot myStarcraftBot
+
+<div class="card">
+    <div class="card-header">
+        <h4 class="mb-0">Build Order Control</h4>
+    </div>
+    <div class="card-body">
+        <!-- Current Build Order Display -->
+        <div class="mb-4">
+            <h5>Current Build Queue</h5>
+            @if (_currentBuildOrder?.Any() == true)
+            {
+                <div class="list-group mb-3">
+                    @for (int i = 0; i < _currentBuildOrder.Count; i++)
+                    {
+                        var item = _currentBuildOrder[i];
+                        var index = i; // Capture for lambda
+                        <div class="list-group-item d-flex justify-content-between align-items-center @(item.IsFixed ? "list-group-item-warning" : "")">
+                            <div class="d-flex flex-column">
+                                <div>
+                                    <span class="badge bg-primary me-2">@(index + 1)</span>
+                                    <strong>@GetDisplayName(item.UnitType)</strong>
+                                    @if (item.IsFixed)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2">Fixed</span>
+                                    }
+                                    @if (item.Priority > 0)
+                                    {
+                                        <span class="badge bg-info ms-2">Priority: @item.Priority</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(item.Reasoning))
+                                {
+                                    <small class="text-muted">@item.Reasoning</small>
+                                }
+                            </div>
+                            <div class="btn-group-vertical" role="group">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => MoveUp(index)" disabled="@(index == 0)">
+                                    ↑
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => MoveDown(index)" disabled="@(index == _currentBuildOrder.Count - 1)">
+                                    ↓
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveItem(index)">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning" @onclick="ClearBuildOrder">
+                        Clear All
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No build orders currently queued.
+                </div>
+            }
+        </div>
+
+        <hr />
+
+        <!-- Add New Build Item -->
+        <div class="mb-4">
+            <h5>Add Build Item</h5>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Unit Type</label>
+                    <select class="form-select" @bind="_selectedUnitType">
+                        <!-- Protoss Workers -->
+                        <optgroup label="Workers">
+                            <option value="@UnitType.Protoss_Probe">Probe</option>
+                        </optgroup>
+
+                        <!-- Protoss Buildings -->
+                        <optgroup label="Buildings">
+                            <option value="@UnitType.Protoss_Nexus">Nexus</option>
+                            <option value="@UnitType.Protoss_Pylon">Pylon</option>
+                            <option value="@UnitType.Protoss_Assimilator">Assimilator</option>
+                            <option value="@UnitType.Protoss_Gateway">Gateway</option>
+                            <option value="@UnitType.Protoss_Forge">Forge</option>
+                            <option value="@UnitType.Protoss_Photon_Cannon">Photon Cannon</option>
+                            <option value="@UnitType.Protoss_Cybernetics_Core">Cybernetics Core</option>
+                            <option value="@UnitType.Protoss_Shield_Battery">Shield Battery</option>
+                            <option value="@UnitType.Protoss_Robotics_Facility">Robotics Facility</option>
+                            <option value="@UnitType.Protoss_Stargate">Stargate</option>
+                            <option value="@UnitType.Protoss_Citadel_of_Adun">Citadel of Adun</option>
+                            <option value="@UnitType.Protoss_Robotics_Support_Bay">Robotics Support Bay</option>
+                            <option value="@UnitType.Protoss_Fleet_Beacon">Fleet Beacon</option>
+                            <option value="@UnitType.Protoss_Templar_Archives">Templar Archives</option>
+                            <option value="@UnitType.Protoss_Observatory">Observatory</option>
+                            <option value="@UnitType.Protoss_Arbiter_Tribunal">Arbiter Tribunal</option>
+                        </optgroup>
+
+                        <!-- Protoss Units -->
+                        <optgroup label="Ground Units">
+                            <option value="@UnitType.Protoss_Zealot">Zealot</option>
+                            <option value="@UnitType.Protoss_Dragoon">Dragoon</option>
+                            <option value="@UnitType.Protoss_High_Templar">High Templar</option>
+                            <option value="@UnitType.Protoss_Dark_Templar">Dark Templar</option>
+                            <option value="@UnitType.Protoss_Archon">Archon</option>
+                            <option value="@UnitType.Protoss_Dark_Archon">Dark Archon</option>
+                            <option value="@UnitType.Protoss_Reaver">Reaver</option>
+                        </optgroup>
+
+                        <optgroup label="Air Units">
+                            <option value="@UnitType.Protoss_Observer">Observer</option>
+                            <option value="@UnitType.Protoss_Shuttle">Shuttle</option>
+                            <option value="@UnitType.Protoss_Scout">Scout</option>
+                            <option value="@UnitType.Protoss_Arbiter">Arbiter</option>
+                            <option value="@UnitType.Protoss_Carrier">Carrier</option>
+                            <option value="@UnitType.Protoss_Corsair">Corsair</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Priority</label>
+                    <input type="number" class="form-control" @bind="_priority" min="0" max="10" />
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" @bind="_isFixed" id="isFixed" />
+                        <label class="form-check-label" for="isFixed">
+                            Fixed Priority
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Reasoning (Optional)</label>
+                    <input type="text" class="form-control" @bind="_reasoning" placeholder="Why build this now?" />
+                </div>
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-primary" @onclick="AddBuildItem">
+                    <i class="fas fa-plus"></i> Add to Queue
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Build Order Presets -->
+        <hr />
+        <div class="mt-3">
+            <h5>Quick Presets</h5>
+            <div class="btn-group mb-2" role="group">
+                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadBasicPreset">
+                    Basic Economy
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadGatewayRushPreset">
+                    Gateway Rush
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadTechPreset">
+                    Tech Build
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UnitType _selectedUnitType = UnitType.Protoss_Probe;
+    private int _priority = 0;
+    private bool _isFixed = false;
+    private string _reasoning = "";
+    private List<BuildOrderItem>? _currentBuildOrder = new();
+
+    protected override void OnInitialized()
+    {
+        RefreshBuildOrder();
+        myStarcraftBot.StatusChanged += OnStatusChanged;
+    }
+
+    public void Dispose()
+    {
+        myStarcraftBot.StatusChanged -= OnStatusChanged;
+    }
+
+    private void OnStatusChanged()
+    {
+        RefreshBuildOrder();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshBuildOrder()
+    {
+        _currentBuildOrder = myStarcraftBot?.Game?.Self() != null ? 
+            myStarcraftBot.GetCurrentBuildOrder()?.ToList() ?? new() : 
+            new();
+    }
+
+    private void AddBuildItem()
+    {
+        if (myStarcraftBot == null) return;
+
+        var buildItem = new BuildOrderItem(_selectedUnitType, _isFixed)
+        {
+            Priority = _priority,
+            Reasoning = string.IsNullOrWhiteSpace(_reasoning) ? null : _reasoning
+        };
+
+        myStarcraftBot.AddToBuildQueue(buildItem);
+        
+        // Reset form
+        _priority = 0;
+        _isFixed = false;
+        _reasoning = "";
+        
+        RefreshBuildOrder();
+    }
+
+    private void RemoveItem(int index)
+    {
+        if (_currentBuildOrder == null || index < 0 || index >= _currentBuildOrder.Count) return;
+        
+        // Remove item and update the queue
+        var newOrder = _currentBuildOrder.ToList();
+        newOrder.RemoveAt(index);
+        UpdateBuildOrder(newOrder);
+    }
+
+    private void MoveUp(int index)
+    {
+        if (_currentBuildOrder == null || index <= 0 || index >= _currentBuildOrder.Count) return;
+        
+        var newOrder = _currentBuildOrder.ToList();
+        var item = newOrder[index];
+        newOrder.RemoveAt(index);
+        newOrder.Insert(index - 1, item);
+        UpdateBuildOrder(newOrder);
+    }
+
+    private void MoveDown(int index)
+    {
+        if (_currentBuildOrder == null || index < 0 || index >= _currentBuildOrder.Count - 1) return;
+        
+        var newOrder = _currentBuildOrder.ToList();
+        var item = newOrder[index];
+        newOrder.RemoveAt(index);
+        newOrder.Insert(index + 1, item);
+        UpdateBuildOrder(newOrder);
+    }
+
+    private void ClearBuildOrder()
+    {
+        myStarcraftBot?.ClearBuildQueue();
+        RefreshBuildOrder();
+    }
+
+    private void UpdateBuildOrder(List<BuildOrderItem> newOrder)
+    {
+        if (myStarcraftBot == null) return;
+        
+        myStarcraftBot.ClearBuildQueue();
+        foreach (var item in newOrder)
+        {
+            myStarcraftBot.AddToBuildQueue(item);
+        }
+        RefreshBuildOrder();
+    }
+
+    private void LoadPreset(string presetName)
+    {
+        if (myStarcraftBot == null) return;
+        
+        myStarcraftBot.ClearBuildQueue();
+        
+        switch (presetName)
+        {
+            case "basic":
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Probe, false) { Reasoning = "Economy foundation" });
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Pylon, false) { Reasoning = "Supply increase" });
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Probe, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Probe, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Gateway, false) { Reasoning = "Military production" });
+                break;
+                
+            case "gateway-rush":
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Probe, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Pylon, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Gateway, true) { Priority = 5, Reasoning = "Rush build" });
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Zealot, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Zealot, false));
+                break;
+                
+            case "tech":
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Probe, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Pylon, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Gateway, false));
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Cybernetics_Core, true) { Priority = 3, Reasoning = "Tech path" });
+                myStarcraftBot.AddToBuildQueue(new BuildOrderItem(UnitType.Protoss_Dragoon, false));
+                break;
+        }
+        
+        RefreshBuildOrder();
+    }
+
+    private string GetDisplayName(UnitType unitType)
+    {
+        return unitType.ToString().Replace("Protoss_", "").Replace("_", " ");
+    }
+
+    private void LoadBasicPreset() => LoadPreset("basic");
+    private void LoadGatewayRushPreset() => LoadPreset("gateway-rush");
+    private void LoadTechPreset() => LoadPreset("tech");
+}

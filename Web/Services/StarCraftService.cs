@@ -6,9 +6,9 @@ namespace Web.Services;
 
 public class StarCraftService
 {
-    private readonly MyStarcraftBot _starcraftBot;
+    private readonly ProtossBot _starcraftBot;
 
-    public StarCraftService(MyStarcraftBot starcraftBot)
+    public StarCraftService(ProtossBot starcraftBot)
     {
         _starcraftBot = starcraftBot;
     }

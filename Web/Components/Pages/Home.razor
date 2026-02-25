@@ -1,16 +1,16 @@
 ﻿@page "/"
-@using Web.Components.BroodwarComponents
 @using Shared
-@inject MyStarcraftBot myStarcraftBot
+@inject ProtossBot myStarcraftBot
 @rendermode InteractiveServer
 @implements IDisposable
 
 <PageTitle>Starcraft Bot</PageTitle>
 
-    <LaunchControl />
+<LaunchControl />
 @if(myStarcraftBot.InGame)
 {
     <GameSpeedControl />
+    <BuildOrderControl />
 }
 
 

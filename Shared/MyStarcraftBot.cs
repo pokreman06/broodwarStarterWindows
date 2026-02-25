@@ -32,28 +32,15 @@ public class ProtossBot : DefaultBWListener
     public void Connect()
     {
         _bwClient = new BWClient(this);
-        var _ = Task.Run(() => _bwClient.StartGame());
         IsRunning = true;
-        StatusChanged?.Invoke();
+        _bwClient.StartGame();
     }
 
-    public void Disconnect()
-    {
-        if (_bwClient != null)
-        {
-            (_bwClient as IDisposable)?.Dispose();
-        }
-        _bwClient = null;
-        IsRunning = false;
-        InGame = false;
-        StatusChanged?.Invoke();
-    }
 
     // Bot Callbacks below
     public override void OnStart()
     {
         InGame = true;
-        StatusChanged?.Invoke();
         Game?.EnableFlag(Flag.UserInput); // let human control too
         
         // Initialize AI systems
@@ -79,7 +66,6 @@ public class ProtossBot : DefaultBWListener
     public override void OnEnd(bool isWinner)
     {
         InGame = false;
-        StatusChanged?.Invoke();
     }
 
     public override void OnFrame()

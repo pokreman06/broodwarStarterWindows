@@ -26,7 +26,21 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 var starcraftService = app.Services.GetRequiredService<StarCraftService>();
+var bot = app.Services.GetRequiredService<MyStarcraftBot>();
 
-app.Run();
+var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (sender, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+};
+
+var _ = Task.Run(() =>
+{
+    app.Run();
+});
+
+bot.Connect();
+
 
 starcraftService.StopAndReset();
